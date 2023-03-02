@@ -22,7 +22,7 @@ type BObject struct {
 	Val BValue
 }
 
-var ErrTyp = errors.New("wrong object type")
+var ErrTyp = errors.New("invalid object type")
 
 func (o *BObject) Str() (string, error) {
 	if o.Typ != BSTR {

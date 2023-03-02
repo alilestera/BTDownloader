@@ -7,10 +7,10 @@ import (
 )
 
 var (
-	ErrNum = errors.New("wrong decoding number")
-	ErrCol = errors.New("wrong decoding colon")
-	ErrEpI = errors.New("wrong decoding sign 'i'")
-	ErrEpE = errors.New("wrong decoding sign 'e'")
+	ErrNum = errors.New("invalid decoding number")
+	ErrCol = errors.New("invalid decoding colon")
+	ErrEpI = errors.New("invalid decoding sign 'i'")
+	ErrEpE = errors.New("invalid decoding sign 'e'")
 )
 
 // DecodeString is to decode a string from a io.Reader
