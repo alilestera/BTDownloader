@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"btdownloader/pkg/bencode"
 )
 
@@ -34,4 +36,12 @@ func TestUnmarshal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	target := &[]string{
+		"1",
+		"12",
+		"123",
+		"1234",
+		"12345",
+	}
+	assert.Equal(t, i, target, "The two string slice should be equal")
 }
