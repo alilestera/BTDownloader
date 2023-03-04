@@ -12,7 +12,7 @@ var typName = map[BType]string{
 func (o *BObject) String() string {
 	return fmt.Sprintf(""+
 		"BObject{"+
-		"\nType: %s\n"+
-		"Value: %s\n"+
+		"\nType: %v\n"+
+		"Value: %v\n"+
 		"}", typName[o.Typ], o.Val)
 }

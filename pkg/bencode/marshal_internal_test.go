@@ -3,6 +3,8 @@ package bencode
 import (
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var objects = []*BObject{
@@ -21,7 +23,7 @@ var objects = []*BObject{
 }
 
 func TestUnmarshalSliceOfSlices(t *testing.T) {
-	s := &[]*BObject{}
+	s := &[][]int{}
 	p := reflect.ValueOf(s)
 	l := reflect.MakeSlice(p.Type().Elem(), len(objects), len(objects))
 	p.Elem().Set(l)
@@ -29,4 +31,10 @@ func TestUnmarshalSliceOfSlices(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+	target := &[][]int{
+		{1},
+		{1, 2},
+		{1, 2, 3},
+	}
+	assert.Equal(t, s, target, "The two int slice should be equal")
 }
