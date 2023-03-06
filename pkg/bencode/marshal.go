@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"reflect"
+	"strings"
 )
 
 func Unmarshal(r io.Reader, s interface{}) error {
@@ -26,17 +27,18 @@ func Unmarshal(r io.Reader, s interface{}) error {
 			return err
 		}
 	case BDICT:
-		//dict, _ := o.Dict()
-		//err = unmarshalDict(p, dict)
-		//if err != nil {
-		//	return err
-		//}
+		dict, _ := o.Dict()
+		err = unmarshalDict(p, dict)
+		if err != nil {
+			return err
+		}
 	default:
 		return errors.New("src code must be struct or slice")
 	}
 	return nil
 }
 
+// p.Kind must be Ptr && p.Elem().Type().Kind() must be Slice
 func unmarshalList(p reflect.Value, list []*BObject) error {
 	if p.Kind() != reflect.Ptr || p.Elem().Type().Kind() != reflect.Slice {
 		return errors.New("dest must be pointer to slice")
@@ -81,6 +83,135 @@ func unmarshalList(p reflect.Value, list []*BObject) error {
 			}
 			v.Index(i).Set(lp.Elem())
 		}
+	case BDICT:
+		for i, o := range list {
+			val, err := o.Dict()
+			if err != nil {
+				return err
+			}
+			if v.Type().Elem().Kind() != reflect.Struct {
+				return ErrTyp
+			}
+			dp := reflect.New(v.Type().Elem())
+			err = unmarshalDict(dp, val)
+			if err != nil {
+				return err
+			}
+			v.Index(i).Set(dp.Elem())
+		}
 	}
 	return nil
+}
+
+// p.Kind() must be Ptr && p.Elem().Type().Kind() must be Struct
+func unmarshalDict(p reflect.Value, dict map[string]*BObject) error {
+	if p.Kind() != reflect.Ptr && p.Elem().Type().Kind() != reflect.Struct {
+		return errors.New("dest must be pointer to struct")
+	}
+	v := p.Elem()
+	for i, n := 0, v.NumField(); i < n; i++ {
+		fv := v.Field(i)
+		if !fv.CanSet() {
+			continue
+		}
+		ft := v.Type().Field(i)
+		key := ft.Tag.Get("bencode")
+		if len(key) == 0 {
+			key = strings.ToLower(ft.Name)
+		}
+		fo := dict[key]
+		if fo == nil {
+			continue
+		}
+		switch fo.Typ {
+		case BSTR:
+			if ft.Type.Kind() != reflect.String {
+				break
+			}
+			val, _ := fo.Str()
+			fv.SetString(val)
+		case BINT:
+			if ft.Type.Kind() != reflect.Int {
+				break
+			}
+			val, _ := fo.Int()
+			fv.SetInt(int64(val))
+		case BLIST:
+			if ft.Type.Kind() != reflect.Slice {
+				break
+			}
+			list, _ := fo.List()
+			lp := reflect.New(ft.Type)
+			ls := reflect.MakeSlice(ft.Type, len(list), len(list))
+			lp.Elem().Set(ls)
+			err := unmarshalList(lp, list)
+			if err != nil {
+				break
+			}
+			fv.Set(lp.Elem())
+		case BDICT:
+			if ft.Type.Kind() != reflect.Struct {
+				break
+			}
+			dp := reflect.New(ft.Type)
+			dict, _ := fo.Dict()
+			err := unmarshalDict(dp, dict)
+			if err != nil {
+				break
+			}
+			fv.Set(dp.Elem())
+		}
+	}
+	return nil
+}
+
+func marshalValue(w io.Writer, v reflect.Value) int {
+	lens := 0
+	switch v.Kind() {
+	case reflect.String:
+		lens += EncodeString(w, v.String())
+	case reflect.Int:
+		lens += EncodeInt(w, int(v.Int()))
+	case reflect.Slice:
+		lens += marshalList(w, v)
+	case reflect.Struct:
+		lens += marshalDict(w, v)
+	}
+	return lens
+}
+
+func marshalList(w io.Writer, vl reflect.Value) int {
+	lens := 2
+	w.Write([]byte{'l'})
+	for i := 0; i < vl.Len(); i++ {
+		ev := vl.Index(i)
+		lens += marshalValue(w, ev)
+	}
+	w.Write([]byte{'e'})
+	return lens
+}
+
+func marshalDict(w io.Writer, vd reflect.Value) int {
+	lens := 2
+	w.Write([]byte{'d'})
+	for i := 0; i < vd.NumField(); i++ {
+		fv := vd.Field(i)
+		ft := vd.Type().Field(i)
+		key := ft.Tag.Get("bencode")
+		if key == "" {
+			key = strings.ToLower(ft.Name)
+		}
+		lens += EncodeString(w, key)
+		lens += marshalValue(w, fv)
+	}
+	w.Write([]byte{'e'})
+	return lens
+}
+
+func Marshal(w io.Writer, s interface{}) int {
+	v := reflect.ValueOf(s)
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	return marshalValue(w, v)
 }
