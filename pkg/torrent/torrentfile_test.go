@@ -2,6 +2,8 @@ package torrent_test
 
 import (
 	"bufio"
+	"encoding/json"
+	"flag"
 	"os"
 	"path/filepath"
 	"testing"
@@ -11,23 +13,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var update = flag.Bool("update", false, "update .golden files")
+
 func TestParseFile(t *testing.T) {
 	tests := []struct {
-		source  string
-		torFile torrent.TorrentFile
+		fileName string
+		source   string
 	}{
 		{
-			source: "debian-iso.torrent",
-			torFile: torrent.TorrentFile{
-				Announce: "http://bttracker.debian.org:6969/announce",
-				FileName: "debian-11.2.0-amd64-netinst.iso",
-				FileLen:  396361728,
-				PieceLen: 262144,
-				InfoSHA: [20]byte{
-					0x28, 0xc5, 0x51, 0x96, 0xf5, 0x77, 0x53, 0xc4, 0xa,
-					0xce, 0xb6, 0xfb, 0x58, 0x61, 0x7e, 0x69, 0x95, 0xa7, 0xed, 0xdb,
-				},
-			},
+			fileName: "debian-iso.golden",
+			source:   "debian-iso.torrent",
 		},
 	}
 
@@ -36,7 +31,19 @@ func TestParseFile(t *testing.T) {
 		assert.Equal(t, nil, err)
 		tf, err := torrent.ParseFile(bufio.NewReader(file))
 		assert.Equal(t, nil, err)
-		tf.PieceSHA = nil
-		assert.NotEqualValues(t, tt.torFile, tf, "")
+		got, err := json.Marshal(tf)
+		assert.Equal(t, nil, err, "error in marshaling torrent file struct")
+
+		golden := filepath.Join("testdata", tt.fileName)
+		if *update {
+			t.Log("update golden file")
+			if err := os.WriteFile(golden, got, 0o644); err != nil {
+				t.Fatalf("failed to update golden file: %s", err)
+			}
+		}
+
+		want, err := os.ReadFile(golden)
+		assert.Equal(t, nil, err)
+		assert.Equal(t, want, got)
 	}
 }
