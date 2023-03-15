@@ -162,7 +162,7 @@ func (t *TorrentTask) getPieceBounds(index int) (begin, end int) {
 
 func Download(task *TorrentTask) error {
 	fmt.Println("start downloading " + task.FileName)
-	// spilt pieceTasks and init task&result channel
+	// split pieceTasks and init task&result channel
 	taskQueue := make(chan *pieceTask, len(task.PieceSHA))
 	resultQueue := make(chan *pieceResult)
 	for index, sha := range task.PieceSHA {
@@ -191,6 +191,7 @@ func Download(task *TorrentTask) error {
 	file, err := os.Create(task.FileName)
 	if err != nil {
 		fmt.Println("fail to create file: " + task.FileName)
+		return err
 	}
 	_, err = file.Write(buf)
 	if err != nil {
