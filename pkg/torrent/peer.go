@@ -109,9 +109,9 @@ const LenBytes uint32 = 4
 
 func (c *PeerConn) WriteMsg(m *PeerMsg) (int, error) {
 	var buf []byte
-	// TODO fix nil pointer logic
 	if m == nil {
 		buf = make([]byte, LenBytes)
+		return c.Write(buf)
 	}
 
 	length := uint32(len(m.Payload) + 1) // +1 for id
