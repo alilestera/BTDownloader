@@ -175,16 +175,16 @@ func NewConn(peer PeerInfo, infoSHA [SHALEN]byte, peerId [IDLEN]byte) (*PeerConn
 		fmt.Println("set tcp conn failed: " + addr)
 		return nil, err
 	}
-	defer conn.Close()
 	// torrent p2p handshake
 	err = handshake(conn, infoSHA, peerId)
 	if err != nil {
 		fmt.Println("handshake failed")
+		conn.Close()
 		return nil, err
 	}
 	c := &PeerConn{
 		Conn:    conn,
-		Choked:  true,
+		Choked:  false,
 		peer:    peer,
 		peerId:  peerId,
 		infoSHA: infoSHA,
